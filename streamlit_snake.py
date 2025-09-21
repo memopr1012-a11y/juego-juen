@@ -4,19 +4,18 @@ import time
 from PIL import Image, ImageDraw
 
 # --- Constantes ---
-# Tablero de juego
 GRID_WIDTH = 20
 GRID_HEIGHT = 20
 CELL_SIZE = 25  # En píxeles
 
 # Colores
-BG_COLOR = "#000000"      # Negro
-SNAKE_COLOR = "#00FF00"   # Verde
-FOOD_COLOR = "#FF0000"    # Rojo
-HEAD_COLOR = "#33FF33"    # Verde más claro para la cabeza
+BG_COLOR = "#1e1e2f"      # Fondo oscuro elegante
+SNAKE_COLOR = "#4CAF50"   # Verde suave
+FOOD_COLOR = "#FF5252"    # Rojo vibrante
+HEAD_COLOR = "#76FF03"    # Verde brillante para la cabeza
 
-# Velocidad del juego
-GAME_SPEED = 0.15  # Segundos por fotograma
+# Velocidad base
+DEFAULT_SPEED = 0.15
 
 
 def initialize_game():
@@ -27,6 +26,7 @@ def initialize_game():
     st.session_state.score = 0
     st.session_state.game_over = False
     st.session_state.game_started = False
+    st.session_state.speed = DEFAULT_SPEED
 
 
 def _get_random_food_pos(snake):
@@ -46,57 +46,59 @@ def draw_board():
 
     # Dibuja la comida
     food_pos = st.session_state.food
-    draw.rectangle(
-        [(food_pos[0] * CELL_SIZE, food_pos[1] * CELL_SIZE),
-         ((food_pos[0] + 1) * CELL_SIZE, (food_pos[1] + 1) * CELL_SIZE)],
+    draw.ellipse(
+        [(food_pos[0] * CELL_SIZE + 3, food_pos[1] * CELL_SIZE + 3),
+         ((food_pos[0] + 1) * CELL_SIZE - 3, (food_pos[1] + 1) * CELL_SIZE - 3)],
         fill=FOOD_COLOR
     )
 
     # Dibuja la serpiente
     for i, segment in enumerate(st.session_state.snake):
         color = HEAD_COLOR if i == 0 else SNAKE_COLOR
-        draw.rectangle(
-            [(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE),
-             ((segment[0] + 1) * CELL_SIZE, (segment[1] + 1) * CELL_SIZE)],
+        draw.rounded_rectangle(
+            [(segment[0] * CELL_SIZE + 2, segment[1] * CELL_SIZE + 2),
+             ((segment[0] + 1) * CELL_SIZE - 2, (segment[1] + 1) * CELL_SIZE - 2)],
+            radius=6,
             fill=color
         )
     return image
 
 
 # --- App Principal ---
-st.set_page_config(page_title="Streamlit Snake", page_icon="🐍")
+st.set_page_config(page_title="🐍 Snake Mejorado", page_icon="🎮", layout="wide")
 
-st.title("🐍 Streamlit Snake Game")
-st.markdown("Un juego clásico de la culebrita hecho con Streamlit. Usa los botones para controlar la serpiente.")
+st.title("🎮 Snake Game Mejorado en Streamlit")
+st.markdown("¡Disfruta de una versión más **visual y divertida** del clásico juego de la culebrita!")
 
 # Inicializa el estado del juego si no existe
 if 'snake' not in st.session_state:
     initialize_game()
 
+# --- Encabezado con puntuación y velocidad ---
+score_col, speed_col = st.columns([2, 1])
+score_col.metric("🏆 Puntuación", st.session_state.score)
+st.session_state.speed = speed_col.slider("⚡ Velocidad", 0.05, 0.5, st.session_state.speed, 0.05)
+
 # --- Layout de la UI del juego ---
-col1, col2 = st.columns([3, 1])  # El tablero es 3 veces más ancho que los controles
+col1, col2 = st.columns([3, 1])
 
 with col1:
-    st.markdown("### Tablero de Juego")
     board_placeholder = st.empty()
     board_placeholder.image(draw_board(), use_column_width=True)
 
 with col2:
-    st.markdown("### Controles")
-    score_placeholder = st.metric("Puntuación", st.session_state.score)
+    st.markdown("### 🎛️ Controles")
 
-    # --- Callbacks de control ---
     def set_direction(direction):
         current_dir = st.session_state.direction
-        # Evita que la serpiente se invierta
         if (direction == "UP" and current_dir != "DOWN") or \
            (direction == "DOWN" and current_dir != "UP") or \
            (direction == "LEFT" and current_dir != "RIGHT") or \
            (direction == "RIGHT" and current_dir != "LEFT"):
             st.session_state.direction = direction
 
-    # --- Botones de control ---
-    st.button("⬆️", on_click=set_direction, args=("UP",), use_container_width=True)
+    # Joystick visual
+    up = st.button("⬆️", on_click=set_direction, args=("UP",), use_container_width=True)
     left_col, right_col = st.columns(2)
     left_col.button("⬅️", on_click=set_direction, args=("LEFT",), use_container_width=True)
     right_col.button("➡️", on_click=set_direction, args=("RIGHT",), use_container_width=True)
@@ -104,30 +106,29 @@ with col2:
 
     st.markdown("---")
 
-    # --- Lógica de Inicio/Pausa/Reinicio ---
+    # Botones de control
     if st.session_state.game_over:
-        st.error(f"¡JUEGO TERMINADO! Puntuación final: {st.session_state.score}")
-        if st.button("Jugar de Nuevo", use_container_width=True):
+        st.error(f"💀 ¡JUEGO TERMINADO! Puntuación final: {st.session_state.score}")
+        if st.button("🔄 Reiniciar Juego", use_container_width=True):
             initialize_game()
             st.rerun()
     else:
         if not st.session_state.game_started:
-            if st.button("Iniciar Juego", use_container_width=True):
+            if st.button("▶️ Iniciar Juego", use_container_width=True):
                 st.session_state.game_started = True
                 st.rerun()
         else:
-            if st.button("Pausar Juego", use_container_width=True):
+            if st.button("⏸️ Pausar Juego", use_container_width=True):
                 st.session_state.game_started = False
                 st.rerun()
 
-# --- Lógica del Bucle de Juego ---
+# --- Lógica del juego ---
 if st.session_state.game_started and not st.session_state.game_over:
-    # Obtener estado actual
     snake = st.session_state.snake.copy()
     head = snake[0]
     direction = st.session_state.direction
 
-    # Calcular nueva posición de la cabeza
+    # Nueva posición
     if direction == "UP":
         new_head = (head[0], head[1] - 1)
     elif direction == "DOWN":
@@ -137,28 +138,29 @@ if st.session_state.game_started and not st.session_state.game_over:
     else:  # RIGHT
         new_head = (head[0] + 1, head[1])
 
-    # --- Detección de Colisiones ---
+    # Colisión
     if not (0 <= new_head[0] < GRID_WIDTH and 0 <= new_head[1] < GRID_HEIGHT) or new_head in snake:
         st.session_state.game_over = True
-        st.rerun()  # Refresca para mostrar la pantalla de "Juego Terminado"
+        st.rerun()
 
-    # --- Actualizar Serpiente ---
+    # Actualiza la serpiente
     snake.insert(0, new_head)
 
-    # --- Consumo de Comida ---
+    # Comer comida
     if new_head == st.session_state.food:
         st.session_state.score += 1
         st.session_state.food = _get_random_food_pos(snake)
     else:
-        snake.pop()  # Elimina la cola si no se comió comida
+        snake.pop()
 
-    # Actualizar estado
+    # Guardar estado
     st.session_state.snake = snake
 
-    # --- Actualizar UI ---
-    score_placeholder.metric("Puntuación", st.session_state.score)
+    # Actualiza la UI
+    score_col.metric("🏆 Puntuación", st.session_state.score)
     board_placeholder.image(draw_board(), use_column_width=True)
 
-    # --- Esperar y refrescar para el siguiente fotograma ---
-    time.sleep(GAME_SPEED)
+    # Espera según la velocidad
+    time.sleep(st.session_state.speed)
     st.rerun()
+
