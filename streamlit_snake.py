@@ -1,48 +1,7 @@
 import streamlit as st
 import random
 import time
-from PIL import Image
-import base64
-from io import BytesIO
-
-# --- Sprites embebidos en base64 ---
-def load_sprite(base64_str):
-    return Image.open(BytesIO(base64.b64decode(base64_str))).convert("RGBA")
-
-# 🐍 Cabeza de la serpiente
-snake_head_b64 = """
-iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABo0lEQVRYR+2Wv0sDQRTHf0sXWlYp
-yLwClWBpkVqCFtZeBG9DaEwRUeAuRNgzJAexQELQpI5EUopKoV1VgFDi2QlFBQgh+vva9vdObXOy
-tWk6M3/3nnvvOd/zMwsJIMIYkwm+AKnGAh9imMYA5U4fDfgDa7cBdRoVqBJ1AOmE1xijFcOAk80z
-llmDwXGe3gZ2RBjHnl6CqZ2yHjG0pUL4ZjjLO/yQux5J7R9jJNoPqHqvNiRhxhcmPcbWizCwHgi0
-cXkGtzLs84rJyoZVJq0PAdfYwcKkN85K3L1q0xZT6UScdMu5uEbqOfcSuwklpW0B9T6zDdOdIkdl
-3dTaa/h6IuzX0h8JfJbBGn0b9OtMp1DqcluZ30uGgXak+Y7Otms/IpwN77rV6A9XgGoZGH3bCv+B
-qfAqks+2gk5AewMkE/djSy+gSQAAAABJRU5ErkJggg==
-"""
-
-# 🐍 Cuerpo de la serpiente
-snake_body_b64 = """
-iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABY0lEQVRYR+2WPUvDQBTHfxdaGqtK
-tEsVvIDiCh7AaP9AFsYJ9YEMNYMQP4AlpP+AcoEbuQBdW1g8SnvQmCZjIyC+RCV3gLLnYw62mTff
-mztnK3gAyMiIFyB+jB3MALuBd9wCda4HkQT+Y3OMrE3CvJJ4s8FY3gTx1rvGMKcM4+U6uLCEmK2x
-Dx9gyb1GjG1VcYOdTsnqN3YQccrnP5xgM+A0jbGuXcBuZcJz7idb6ydJtgLOMJ+WjY8my3SCE0Jp
-ce3qciqHINJzTBlgxNNr09C0lsqD80OdoVkPNqM4Q0wQGeqtBpSR16j5txqvC3yn6L9EzAeCsnNO
-q3AvADHfXgFVSmewAAAAASUVORK5CYII=
-"""
-
-# 🍎 Comida (manzana)
-apple_b64 = """
-iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABWElEQVRYR+2WwUoDQRSGv2+ZbNNK
-RGq1Gp0ajUZJjZJ+gLthhZI7kT2+gXrXxPkCc6OYt6lF2qghIWBK6yGBow9Nnuye95XoBEXiP03G
-SwCxFvAc7wbFMaT44YxB/Af63/g/AJfYBLjDqTqBWzAuZbpXwF5mD1nmICm/RBHzMi7+7kU8B3hJ
-bZr4rRrcswe3HY1L1AfTfznV2t4gE4FxjD3PpE+LAC/D6rNgs8xV6iyc4NMa6g1+Y0muUttYZAZT
-qgbXKn8XGApbqn8VK0dUzfQ6MdyJgM8D1LYpUl8Ejkm59kCt+McDNC5b1pqutbVgItqLwFo6QXvX
-fhUAAAAASUVORK5CYII=
-"""
-
-HEAD_IMG = load_sprite(snake_head_b64)
-BODY_IMG = load_sprite(snake_body_b64)
-FOOD_IMG = load_sprite(apple_b64)
+from PIL import Image, ImageDraw
 
 # --- Configuración del juego ---
 GRID_WIDTH = 20
@@ -68,24 +27,31 @@ def draw_board():
     width = GRID_WIDTH * CELL_SIZE
     height = GRID_HEIGHT * CELL_SIZE
     board = Image.new("RGBA", (width, height), (40, 40, 40, 255))
+    draw = ImageDraw.Draw(board)
 
-    # Comida
+    # 🍎 Comida (círculo rojo con brillo)
     fx, fy = st.session_state.food
-    board.paste(FOOD_IMG, (fx * CELL_SIZE, fy * CELL_SIZE), FOOD_IMG)
+    x0, y0 = fx * CELL_SIZE + 5, fy * CELL_SIZE + 5
+    x1, y1 = (fx + 1) * CELL_SIZE - 5, (fy + 1) * CELL_SIZE - 5
+    draw.ellipse([x0, y0, x1, y1], fill=(255, 80, 80), outline=(200, 0, 0), width=3)
 
-    # Serpiente
+    # 🐍 Serpiente (cabeza distinta al cuerpo)
     for i, (x, y) in enumerate(st.session_state.snake):
-        if i == 0:
-            board.paste(HEAD_IMG, (x * CELL_SIZE, y * CELL_SIZE), HEAD_IMG)
-        else:
-            board.paste(BODY_IMG, (x * CELL_SIZE, y * CELL_SIZE), BODY_IMG)
-
+        x0, y0 = x * CELL_SIZE + 2, y * CELL_SIZE + 2
+        x1, y1 = (x + 1) * CELL_SIZE - 2, (y + 1) * CELL_SIZE - 2
+        if i == 0:  # Cabeza
+            draw.rounded_rectangle([x0, y0, x1, y1], radius=8, fill=(0, 255, 100), outline=(0, 200, 80), width=3)
+            # ojitos
+            draw.ellipse([x0+5, y0+5, x0+10, y0+10], fill="black")
+            draw.ellipse([x1-10, y0+5, x1-5, y0+10], fill="black")
+        else:       # Cuerpo
+            draw.rounded_rectangle([x0, y0, x1, y1], radius=6, fill=(0, 200, 0), outline=(0, 150, 0), width=2)
     return board
 
 # --- Interfaz ---
 st.set_page_config(page_title="Snake Animado", page_icon="🐍", layout="wide")
 
-st.title("🐍 Snake con teclas y diseño animado")
+st.title("🐍 Snake con teclas")
 st.markdown("Usa las teclas **WASD** o **Flechas** para mover la serpiente.")
 
 if "snake" not in st.session_state:
@@ -94,36 +60,21 @@ if "snake" not in st.session_state:
 board_placeholder = st.empty()
 score_placeholder = st.empty()
 
-# Captura de teclas con JS
-st.markdown(
-    """
-    <script>
-    const streamlitDoc = window.parent.document;
-    streamlitDoc.addEventListener("keydown", function(e) {
-        let key = e.key;
-        window.parent.postMessage({isStreamlitKeyEvent: true, key: key}, "*");
-    });
-    </script>
-    """,
-    unsafe_allow_html=True,
-)
-
+# Guardar última tecla (⚠️ Streamlit no captura teclado en tiempo real sin un componente JS externo)
 if "last_key" not in st.session_state:
     st.session_state.last_key = "RIGHT"
 
-# Placeholder para mensajes de teclado
-key_event = st.experimental_get_query_params().get("key", [""])[0]
+# Controles manuales (puedes cambiarlos luego por captura con JS)
+col1, col2, col3 = st.columns(3)
+if col2.button("⬆️"): st.session_state.last_key = "UP"
+if col1.button("⬅️"): st.session_state.last_key = "LEFT"
+if col3.button("➡️"): st.session_state.last_key = "RIGHT"
+if col2.button("⬇️"): st.session_state.last_key = "DOWN"
 
 def process_key():
-    key = st.session_state.get("last_key", "")
-    if key in ["ArrowUp", "w", "W"]:
-        st.session_state.direction = "UP"
-    elif key in ["ArrowDown", "s", "S"]:
-        st.session_state.direction = "DOWN"
-    elif key in ["ArrowLeft", "a", "A"]:
-        st.session_state.direction = "LEFT"
-    elif key in ["ArrowRight", "d", "D"]:
-        st.session_state.direction = "RIGHT"
+    key = st.session_state.last_key
+    if key in ["UP", "DOWN", "LEFT", "RIGHT"]:
+        st.session_state.direction = key
 
 # --- Lógica del juego ---
 if st.session_state.game_started and not st.session_state.game_over:
